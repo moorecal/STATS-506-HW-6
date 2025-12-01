@@ -1,0 +1,46 @@
+---
+title: "STATS 506 HW 6"
+author: "Calder Moore"
+format: pdf
+editor: visual
+---
+
+## Problem 1 - Rcpp
+
+```{r}
+library(Rcpp)
+
+cppFunction("
+            double C_moment(NumericVector v, int k) {
+              double sum = 0;
+              for (int i = 0; i < v.length(); ++i){
+                sum += v[i];
+              }
+              
+              double mu = 0.0;
+              mu = (sum/v.length());
+              
+              double acc = 0.0;
+              for (int i = 0; i < v.length(); i++) {
+                acc += pow(v[i] - mu, k);
+              }
+          
+              return acc / v.length();
+            
+            }")
+
+C_moment(v = c(1,0,2,3,4.5,6.7,9,1.2), k = 3)
+
+e1071::moment(x = c(1,0,2,3,4.5,6.7,9,1.2), order = 3, center = TRUE)
+```
+
+They match when the $\texttt{center}$ argument in $\texttt{e1071::moment}$ is set to $\texttt{TRUE}$, they won't match otherwise since the $\texttt{C_moment}$ function is calculating moments relative to the mean ($\texttt{mu}$ in the function) and so we need the other function to also be calculating centered moments.
+
+##Problem 2 - Expanding on waldCI
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+
