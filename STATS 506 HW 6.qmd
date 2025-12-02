@@ -303,50 +303,35 @@ ggplot(coef_df, aes(x = country, y = forum_coef)) +
 Use parallel processing to try and improve the run time. Part a) took forever.
 
 ```{r}
-library(lme4)
 library(parallel)
-
-# Ensure predictors are numeric
-df$GPA <- as.numeric(df$GPA)
-df$forum_posts <- as.numeric(df$forum_posts)
-df$quiz_attempts <- as.numeric(df$quiz_attempts)
-
-# Standardize predictors within each country (vectorized with ave)
-df$GPA_std <- ave(df$GPA, df$country, FUN = function(x) if(length(x) > 1) as.vector(scale(x)) else rep(0, length(x)))
-df$forum_posts_std <- ave(df$forum_posts, df$country, FUN = function(x) if(length(x) > 1) as.vector(scale(x)) else rep(0, length(x)))
-df$quiz_attempts_std <- ave(df$quiz_attempts, df$country, FUN = function(x) if(length(x) > 1) as.vector(scale(x)) else rep(0, length(x)))
 
 countries <- unique(df$country)
 
-# Function to fit a model for one country
+#model per country
 fit_model <- function(c) {
   data_i <- df[df$country == c, ]
-  glmer(completion ~ GPA_std + forum_posts_std + quiz_attempts_std + (1 | device),
+  glmer(completed_course ~ gpa_std + forum_posts_std + quiz_attempts_std + (1 | device_type),
         data = data_i, family = binomial)
 }
 
-# Record running time of entire script
+#run time
 time_total <- system.time({
 
-  # Set up cluster using all available cores minus 1
+
   cl <- makeCluster(detectCores() - 1)
   clusterExport(cl, c("df", "fit_model"))
   clusterEvalQ(cl, library(lme4))
   
-  # Fit models in parallel
   models <- parLapply(cl, countries, fit_model)
   stopCluster(cl)
   
-  # Name the models by country
   names(models) <- countries
-  
-  # Extract forum_posts coefficients
+
   coef_forum <- sapply(models, function(mod) fixef(mod)["forum_posts_std"])
   names(coef_forum) <- countries
 })
 
-# Convert to data frame for comparison
-coef_df <- data.frame(
+coef_df_par <- data.frame(
   country = names(coef_forum),
   forum_coef = as.numeric(coef_forum)
 )
@@ -354,9 +339,16 @@ coef_df <- data.frame(
 # Show results
 time_total
 coef_df
+coef_df_par
 
 ```
 
+The results match. The total run time for this script was 518.76 seconds.
 
+## Problem 4 - data.table
+
+```{r}
+
+```
 
 
