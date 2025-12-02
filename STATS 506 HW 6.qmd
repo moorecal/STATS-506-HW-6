@@ -228,11 +228,134 @@ $\texttt{series}$ is the faster method here.
 ### a)
 
 ```{r}
+#source("https://dept.stat.lsa.umich.edu/~jerrick/courses/stat506_f25/ps06q3.R")
+
+#rescale
+for (i in unique(df$country)) {
+  
+  id <- (df$country == i)
+  n <- sum(id)
+  
+  if(n > 1) {
+    df$gpa_std[id] <- as.vector(scale(df$prior_gpa[id]))
+    df$forum_posts_std[id] <- as.vector(scale(df$forum_posts[id]))
+    df$quiz_attempts_std[id] <- as.vector(scale(df$quiz_attempts[id]))
+  }
+  else {
+    df$GPA_std[id] <- 0
+    df$forum_posts_std[id] <- 0
+    df$quiz_attempts_std[id] <- 0
+  }
+}
+
+#make models
+library(lme4)
+
+countries <- unique(df$country)
+models <- list()
+runtimes <- numeric(length(countries))
+
+for (i in seq_along(countries)) {
+  data_i <- df[df$country == countries[i], ]
+  
+  #run time
+  runtimes[i] <- system.time({
+    models[[i]] <- glmer(completed_course ~ gpa_std + forum_posts_std + quiz_attempts_std + (1 | device_type),
+      data = data_i,
+      family = binomial
+    )
+  })["elapsed"]
+}
+
+# Display running times
+runtimes
 
 ```
 
+Visualization:
+
+```{r}
+library(ggplot2)
+
+coef_forum <- sapply(models, function(mod) {
+  fixef(mod)["forum_posts_std"]
+})
+names(coef_forum) <- countries
 
 
+coef_df <- data.frame(
+  country = names(coef_forum),
+  forum_coef = coef_forum
+)
+
+ggplot(coef_df, aes(x = country, y = forum_coef)) +
+  geom_col() +
+  labs(
+    title = "Estimated Effect of Forum Posts on Course Completion",
+    y = "Coefficient (standardized forum posts)",
+    x = "Country"
+  )
+
+```
+
+### b)
+
+Use parallel processing to try and improve the run time. Part a) took forever.
+
+```{r}
+library(lme4)
+library(parallel)
+
+# Ensure predictors are numeric
+df$GPA <- as.numeric(df$GPA)
+df$forum_posts <- as.numeric(df$forum_posts)
+df$quiz_attempts <- as.numeric(df$quiz_attempts)
+
+# Standardize predictors within each country (vectorized with ave)
+df$GPA_std <- ave(df$GPA, df$country, FUN = function(x) if(length(x) > 1) as.vector(scale(x)) else rep(0, length(x)))
+df$forum_posts_std <- ave(df$forum_posts, df$country, FUN = function(x) if(length(x) > 1) as.vector(scale(x)) else rep(0, length(x)))
+df$quiz_attempts_std <- ave(df$quiz_attempts, df$country, FUN = function(x) if(length(x) > 1) as.vector(scale(x)) else rep(0, length(x)))
+
+countries <- unique(df$country)
+
+# Function to fit a model for one country
+fit_model <- function(c) {
+  data_i <- df[df$country == c, ]
+  glmer(completion ~ GPA_std + forum_posts_std + quiz_attempts_std + (1 | device),
+        data = data_i, family = binomial)
+}
+
+# Record running time of entire script
+time_total <- system.time({
+
+  # Set up cluster using all available cores minus 1
+  cl <- makeCluster(detectCores() - 1)
+  clusterExport(cl, c("df", "fit_model"))
+  clusterEvalQ(cl, library(lme4))
+  
+  # Fit models in parallel
+  models <- parLapply(cl, countries, fit_model)
+  stopCluster(cl)
+  
+  # Name the models by country
+  names(models) <- countries
+  
+  # Extract forum_posts coefficients
+  coef_forum <- sapply(models, function(mod) fixef(mod)["forum_posts_std"])
+  names(coef_forum) <- countries
+})
+
+# Convert to data frame for comparison
+coef_df <- data.frame(
+  country = names(coef_forum),
+  forum_coef = as.numeric(coef_forum)
+)
+
+# Show results
+time_total
+coef_df
+
+```
 
 
 
