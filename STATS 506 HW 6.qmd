@@ -347,8 +347,80 @@ The results match. The total run time for this script was 518.76 seconds.
 
 ## Problem 4 - data.table
 
+### a)
+
 ```{r}
+library(data.table)
+library(tidyverse)
+
+tennis <- fread("atp_matches_2019.txt")
+
+#deal with the Davis Cup issue
+tennis$tourney_name_davis <- ifelse(grepl("Davis Cup", tennis$tourney_name), "Davis Cup", tennis$tourney_name)
+
+
+tennis_2019 <- tennis[substr(tourney_date, 1, 4) == 2019,]
+num_tournaments_2019 <- tennis_2019[, uniqueN(tourney_name_davis)]
+num_tournaments_2019
+```
+
+I seem to be missing three tournaments compared to the solution.
+
+### b)
+
+```{r}
+tourney_wins <- tennis[, .(tournaments_won = uniqueN(tourney_name)), by = winner_name]
+
+multi_winners <- tourney_wins[tournaments_won > 1]
+multi_winners <- multi_winners[order(-tournaments_won)]
+multi_winners
+
+nrow(multi_winners)
+
+max_wins <- max(multi_winners$tournaments_won)
+multi_winners[tournaments_won == max_wins]
+```
+
+155 players have won more than one tournament and Diego Schwartzman has won the most at 21.
+
+### c)
+
+```{r}
+aces <- tennis[!is.na(w_ace) & !is.na(l_ace)]
+
+aces_long <- melt(aces,
+                  measure.vars = c("w_ace", "l_ace"),
+                  variable.name = "player_type",
+                  value.name = "aces") %>%
+  mutate(player_type = if_else(player_type == "w_ace", "winner", "loser"))
+
+aces_long %>%
+  group_by(player_type) %>%
+  summarise(mean_aces = mean(aces), .groups = "drop")
+
+t.test(aces$w_ace, aces$l_ace, paired = TRUE)
 
 ```
 
+There is evidence of a difference, the p-value from the t-test is very small.
+
+### d)
+
+```{r}
+
+players <- rbind(
+  tennis[, .(player = winner_name, result = 1)],
+  tennis[, .(player = loser_name, result = 0)]
+)
+
+players <- players[, .(matches = .N, wins = sum(result)), by = player]
+players <- players[matches >= 5]
+players[, win_rate := wins / matches]
+
+players[player_stats$win_rate == max(players$win_rate)]
+
+
+```
+
+Again we find Nadal, with an 86.96% win rate.
 
