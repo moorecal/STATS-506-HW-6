@@ -34,7 +34,8 @@ C_moment(v = c(1,0,2,3,4.5,6.7,9,1.2), k = 3)
 e1071::moment(x = c(1,0,2,3,4.5,6.7,9,1.2), order = 3, center = TRUE)
 ```
 
-They match when the $\texttt{center}$ argument in $\texttt{e1071::moment}$ is set to $\texttt{TRUE}$, they won't match otherwise since the $\texttt{C_moment}$ function is calculating moments relative to the mean ($\texttt{mu}$ in the function) and so we need the other function to also be calculating centered moments.
+They match when the `center` argument in `e1071::moment` is set to `TRUE`. They won’t match otherwise, since the `C_moment` function is calculating moments relative to the mean (`mu` in the function), so we need the other function to also compute centered moments.
+
 
 ##Problem 2 - Expanding on waldCI
 
@@ -228,7 +229,7 @@ $\texttt{series}$ is the faster method here.
 ### a)
 
 ```{r}
-#source("https://dept.stat.lsa.umich.edu/~jerrick/courses/stat506_f25/ps06q3.R")
+source("https://dept.stat.lsa.umich.edu/~jerrick/courses/stat506_f25/ps06q3.R")
 
 #rescale
 for (i in unique(df$country)) {
@@ -417,7 +418,7 @@ players <- players[, .(matches = .N, wins = sum(result)), by = player]
 players <- players[matches >= 5]
 players[, win_rate := wins / matches]
 
-players[player_stats$win_rate == max(players$win_rate)]
+players[players$win_rate == max(players$win_rate)]
 
 
 ```
